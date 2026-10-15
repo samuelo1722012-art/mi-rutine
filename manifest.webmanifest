@@ -1,0 +1,13 @@
+{
+  "name": "Mi Rutina",
+  "short_name": "Mi Rutina",
+  "description": "Horario diario, temporizador, recordatorios y control por voz.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#172554",
+  "icons": [
+    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

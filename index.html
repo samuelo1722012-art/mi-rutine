@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#172554">
+  <meta name="description" content="Tu horario diario con recordatorios, temporizador y control por voz.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <title>Mi Rutina</title>
+  <style>
+    :root { color-scheme: light; --navy:#172554; --blue:#2563eb; --pale:#eff6ff; --ink:#172033; --muted:#64748b; --line:#e2e8f0; --bg:#f6f8fc; --green:#15803d; --amber:#b45309; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
+    header { background:var(--navy); color:white; padding:22px 18px 26px; border-radius:0 0 24px 24px; }
+    .wrap { width:min(760px,100%); margin:0 auto; }
+    .topline { display:flex; align-items:center; gap:12px; }
+    .logo { width:44px;height:44px;border-radius:14px;background:#fff;color:var(--navy);display:grid;place-items:center;font-size:23px; }
+    h1 { font-size:25px; margin:0; letter-spacing:-.4px; }
+    .sub { color:#dbeafe; margin:4px 0 0; font-size:14px; }
+    main { padding:16px; }
+    .card { background:white; border:1px solid var(--line); border-radius:20px; padding:18px; margin:0 0 14px; box-shadow:0 3px 14px #0f172a08; }
+    .eyebrow { color:var(--muted); font-size:12px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
+    .current-title { font-size:24px; font-weight:800; margin:7px 0 5px; letter-spacing:-.5px; }
+    .muted { color:var(--muted); }
+    .timer { font-size:clamp(42px,12vw,58px); line-height:1.15; text-align:center; font-weight:800; letter-spacing:1px; font-variant-numeric:tabular-nums; margin:18px 0 8px; }
+    .progress { height:9px; background:#e2e8f0; border-radius:99px; overflow:hidden; margin:12px 0 7px; }
+    .progress > div { height:100%; width:0%; background:var(--blue); border-radius:99px; transition:width .3s; }
+    .center { text-align:center; }
+    .row { display:flex; gap:9px; flex-wrap:wrap; }
+    button { font:inherit; border:0; border-radius:13px; padding:12px 14px; font-weight:700; cursor:pointer; min-height:46px; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline:3px solid #93c5fd; outline-offset:2px; }
+    .primary { background:var(--blue); color:white; }
+    .dark { background:var(--navy); color:white; }
+    .soft { background:var(--pale); color:#1d4ed8; }
+    .neutral { background:#f1f5f9; color:#334155; }
+    .warn { background:#fff7ed; color:#9a3412; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    .row button { flex:1; }
+    .section-title { font-size:18px; margin:0 0 12px; }
+    .schedule-item { display:flex; gap:12px; padding:13px 0; border-top:1px solid var(--line); align-items:center; }
+    .schedule-item:first-of-type { border-top:0; }
+    .time { min-width:112px; font-size:13px; color:var(--muted); font-weight:700; }
+    .emoji { width:42px;height:42px;border-radius:13px;background:#f1f5f9;display:grid;place-items:center;font-size:22px;flex-shrink:0; }
+    .activity { flex:1; min-width:0; }
+    .activity strong { display:block; }
+    .activity small { color:var(--muted); }
+    .done { color:var(--green); font-size:12px; font-weight:800; }
+    .active-item { background:#eff6ff; border-radius:14px; margin:5px -7px; padding:12px 7px; border-top:0; }
+    .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    label { display:block; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:6px; }
+    input, select { width:100%; border:1px solid #cbd5e1; border-radius:11px; padding:11px; font:inherit; background:white; color:var(--ink); }
+    .small { font-size:13px; line-height:1.45; }
+    .status { background:#f8fafc; border-radius:12px; padding:11px 12px; margin-top:12px; font-size:14px; }
+    .status.good { background:#f0fdf4; color:#166534; }
+    .status.attn { background:#fff7ed; color:#9a3412; }
+    .voice { display:flex; align-items:center; gap:12px; }
+    .mic { width:54px;height:54px;border-radius:17px;flex-shrink:0;font-size:23px; }
+    footer { text-align:center; color:var(--muted); padding:8px 20px 28px; font-size:12px; }
+    .hidden { display:none !important; }
+    @media (max-width:430px) { .time { min-width:91px; font-size:12px; } .card { padding:15px; } main { padding:12px; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="topline">
+      <div class="logo" aria-hidden="true">🗓️</div>
+      <div><h1>Mi Rutina</h1><p class="sub">Tu tarde, organizada paso a paso.</p></div>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <section class="card" aria-labelledby="currentHeading">
+    <div class="eyebrow" id="currentHeading">Actividad actual</div>
+    <div class="current-title" id="currentName">Preparando tu horario…</div>
+    <div class="muted small" id="currentTime">1:30 p. m. – 2:00 p. m.</div>
+    <div class="timer" id="timer" aria-live="polite">--:--:--</div>
+    <div class="progress"><div id="progressBar"></div></div>
+    <div class="small muted center" id="timerCaption">Tiempo restante de esta actividad</div>
+    <div class="status" id="status" role="status">Permite las notificaciones para recibir avisos.</div>
+    <div class="row" style="margin-top:13px">
+      <button class="primary" id="doneBtn">✓ Tarea terminada</button>
+      <button class="soft" id="extendBtn">＋ 5 minutos</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">🎙️ Control por voz</h2>
+    <div class="voice">
+      <button class="dark mic" id="voiceBtn" aria-label="Activar control por voz">🎤</button>
+      <div>
+        <strong id="voiceLabel">Pulsa el micrófono para hablar</strong>
+        <div class="small muted">Prueba: “tarea terminada”, “cinco minutos más” o “¿qué sigue?”.</div>
+      </div>
+    </div>
+    <div class="small muted" style="margin-top:10px">El navegador puede pedir permiso para usar el micrófono. Para mayor fiabilidad, mantén Mi Rutina abierta durante la escucha.</div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">📅 Horario de hoy</h2>
+    <div id="schedule"></div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">🔔 Avisos y ajustes</h2>
+    <div class="row">
+      <button class="soft" id="notifyBtn">Activar notificaciones</button>
+      <button class="neutral" id="soundBtn">Probar sonido</button>
+    </div>
+    <p class="small muted">Las notificaciones y los sonidos dependen de los permisos del navegador, del modo No molestar y de los ajustes de batería del teléfono.</p>
+    <div class="settings-grid">
+      <div><label for="start">Hora de inicio</label><input id="start" type="time" value="13:30"></div>
+      <div><label for="classStart">Inicio de la clase</label><input id="classStart" type="time" value="18:00"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="saveBtn">Guardar horario</button>
+      <button class="neutral" id="resetBtn">Reiniciar día</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">ℹ️ Cómo funciona</h2>
+    <ul class="small">
+      <li>“Tarea terminada” registra que acabaste la actividad actual.</li>
+      <li>Si acabas las tareas antes de las 6:00 p. m., la app te recuerda que puedes descansar hasta la clase.</li>
+      <li>“Cinco minutos más” desplaza los horarios siguientes cinco minutos.</li>
+      <li>Los cambios y las tareas marcadas se guardan en este teléfono/navegador.</li>
+    </ul>
+  </section>
+</main>
+<footer>Mi Rutina · Versión inicial · Tus horarios se guardan en este navegador.</footer>
+
+<div class="hidden" id="earlyDialog" role="dialog" aria-modal="true" aria-labelledby="earlyTitle">
+  <div class="card" style="position:fixed;inset:50% 16px auto;transform:translateY(-50%);z-index:5;max-width:500px;margin:auto;box-shadow:0 0 0 100vmax #0f172a80">
+    <h2 id="earlyTitle">¡Actividad terminada!</h2>
+    <p id="earlyMessage">Has terminado antes de tiempo.</p>
+    <div class="row"><button class="primary" id="keepBtn">Mantener horario</button><button class="soft" id="nextNowBtn">Empezar siguiente ahora</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const defaultPlan = [
+    {id:'lunch', name:'Almorzar', icon:'🍽️', start:'13:30', end:'14:00'},
+    {id:'dishes', name:'Lavar la loza', icon:'🧽', start:'14:00', end:'14:30'},
+    {id:'rest', name:'Descansar o intentar dormir', icon:'😴', start:'14:30', end:'15:00'},
+    {id:'homework', name:'Hacer tareas escolares', icon:'📚', start:'15:00', end:'18:00'},
+    {id:'class', name:'Clase de límites e integrales', icon:'📐', start:'18:00', end:'19:00'},
+    {id:'play', name:'Jugar y desconectarte', icon:'🎮', start:'19:00', end:'19:30'}
+  ];
+  const storageKey = 'miRutina.v1';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch {}
+  let plan = saved.plan || defaultPlan.map(x=>({...x}));
+  let completed = new Set(saved.completed || []);
+  let shiftMinutes = saved.shiftMinutes || 0;
+  let activeOverride = saved.activeOverride || null;
+  let lastActiveId = null;
+  let intervalId = null;
+  let recognition = null;
+  let voiceOn = false;
+  let notifiedIds = new Set();
+  let audioCtx = null;
+
+  const minutes = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+  const fmt = n => { n = ((n%1440)+1440)%1440; let h=Math.floor(n/60), m=n%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; };
+  const showTime = t => { let [h,m]=t.split(':').map(Number); const ap=h>=12?'p. m.':'a. m.'; h=h%12||12; return `${h}:${String(m).padStart(2,'0')} ${ap}`; };
+  const plus = (t, n) => fmt(minutes(t)+n);
+  function save() { localStorage.setItem(storageKey, JSON.stringify({plan,completed:[...completed],shiftMinutes,activeOverride})); }
+  function getPlan() {
+    return plan.map(x => ({...x, start:plus(x.start,shiftMinutes), end:plus(x.end,shiftMinutes)}));
+  }
+  function nowMinutes() { const d=new Date(); return d.getHours()*60+d.getMinutes()+d.getSeconds()/60; }
+  function findCurrent() {
+    const p=getPlan(), now=nowMinutes();
+    if (activeOverride) {
+      const x=p.find(y=>y.id===activeOverride);
+      if (x && now < minutes(x.end)) return x;
+      activeOverride = null;
+    }
+    return p.find(x=>now>=minutes(x.start) && now<minutes(x.end)) || null;
+  }
+  function nextItem(item) {
+    const p=getPlan();
+    if (!item) return p.find(x=>minutes(x.start)>nowMinutes()) || null;
+    return p[p.findIndex(x=>x.id===item.id)+1] || null;
+  }
+  function remainingFor(item) {
+    if (!item) return 0;
+    return Math.max(0, Math.round((minutes(item.end)-nowMinutes())*60));
+  }
+  function hhmmss(s) { s=Math.max(0,Math.floor(s)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60; return [h,m,sec].map(v=>String(v).padStart(2,'0')).join(':'); }
+  function status(msg, kind='') { $('status').textContent=msg; $('status').className='status '+kind; }
+  function speak(msg) {
+    try { if ('speechSynthesis' in window) { speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(msg); u.lang='es-CO'; u.rate=0.96; speechSynthesis.speak(u); } } catch {}
+  }
+  async function notify(title, body) {
+    status(body);
+    playBeep();
+    if ('Notification' in window && Notification.permission==='granted') {
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => reg.showNotification(title,{body,icon:'./icon.svg',tag:'mi-rutina'})).catch(()=>{});
+        } else {
+          new Notification(title,{body,icon:'./icon.svg',tag:'mi-rutina'});
+        }
+      } catch {}
+    }
+    speak(body);
+  }
+  function playBeep() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      if (audioCtx.state==='suspended') audioCtx.resume();
+      const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+      osc.type='sine'; osc.frequency.value=880; gain.gain.setValueAtTime(.0001,audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.15,audioCtx.currentTime+.03);
+      gain.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.35);
+      osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+.38);
+    } catch {}
+  }
+  function renderSchedule() {
+    const p=getPlan(), now=nowMinutes(), current=findCurrent();
+    $('schedule').innerHTML='';
+    p.forEach(item=>{
+      const isActive=current && current.id===item.id;
+      const div=document.createElement('div');
+      div.className='schedule-item'+(isActive?' active-item':'');
+      const isDone=completed.has(item.id);
+      div.innerHTML=`<div class="time">${showTime(item.start)}<br>– ${showTime(item.end)}</div><div class="emoji">${item.icon}</div><div class="activity"><strong>${item.name}</strong><small>${isDone?'<span class="done">✓ Completada</span>':(isActive?'En curso':(now>=minutes(item.end)?'Horario pasado':'Pendiente'))}</small></div>`;
+      $('schedule').appendChild(div);
+    });
+  }
+  function render() {
+    const item=findCurrent(), now=nowMinutes();
+    if (item) {
+      $('currentName').textContent=item.name;
+      $('currentTime').textContent=`${showTime(item.start)} – ${showTime(item.end)}`;
+      const remain=remainingFor(item);
+      $('timer').textContent=hhmmss(remain);
+      const total=(minutes(item.end)-minutes(item.start))*60;
+      const elapsed=Math.max(0,total-remain);
+      $('progressBar').style.width=`${Math.min(100,total?elapsed/total*100:0)}%`;
+      $('timerCaption').textContent=remain>0?'Tiempo restante de esta actividad':'Hora de cambiar de actividad';
+      $('doneBtn').disabled=completed.has(item.id);
+      if (lastActiveId!==item.id) {
+        lastActiveId=item.id;
+        if (!notifiedIds.has('start-'+item.id)) {
+          notifiedIds.add('start-'+item.id);
+          // Avoid speaking unexpectedly on initial page load.
+          if (sessionStorage.getItem('miRutina.initialized')) notify('Mi Rutina',`Ahora toca: ${item.name}.`);
+        }
+      }
+    } else {
+      const next=pendingNext();
+      $('currentName').textContent=next?'Tiempo libre / preparación':'¡Terminaste tu horario!';
+      $('currentTime').textContent=next?`Lo siguiente empieza a las ${showTime(next.start)}`:'No quedan actividades programadas.';
+      $('timer').textContent=next?hhmmss(Math.max(0,(minutes(next.start)-now)*60)):'00:00:00';
+      $('progressBar').style.width='100%';
+      $('timerCaption').textContent=next?'Tiempo hasta la siguiente actividad':'¡Buen trabajo por hoy!';
+      $('doneBtn').disabled=true;
+    }
+    renderSchedule();
+    sessionStorage.setItem('miRutina.initialized','1');
+  }
+  function pendingNext() { return getPlan().find(x=>minutes(x.start)>nowMinutes() && !completed.has(x.id)) || null; }
+  function tick() {
+    const item=findCurrent();
+    if (item && remainingFor(item)===0 && !notifiedIds.has('end-'+item.id)) {
+      notifiedIds.add('end-'+item.id);
+      notify('Cambio de actividad',`Terminó el tiempo de ${item.name}. Revisa qué sigue.`);
+    }
+    render();
+  }
+  function markDone() {
+    const item=findCurrent();
+    if (!item) { status('No hay una actividad en curso. Revisa el horario.','attn'); return; }
+    if (completed.has(item.id)) { status('Esta actividad ya está marcada como completada.','good'); return; }
+    completed.add(item.id); save();
+    const next=nextItem(item);
+    if (item.id==='homework' && next && nowMinutes()<minutes(next.start)) {
+      $('earlyMessage').textContent=`Terminaste las tareas. Tu clase empieza a las ${showTime(next.start)}. Puedes mantener el horario o empezar la siguiente actividad ahora.`;
+      $('earlyDialog').classList.remove('hidden');
+      status('¡Tareas terminadas! Puedes descansar hasta tu clase.','good');
+      speak(`¡Tareas terminadas! Puedes descansar hasta las ${showTime(next.start)}.`);
+    } else {
+      status(`¡Listo! ${item.name} quedó marcada como terminada.`,'good');
+      speak(`Muy bien. ${item.name} terminada.`);
+    }
+    render();
+  }
+  function extendFive() {
+    shiftMinutes+=5; activeOverride=null; save(); notifiedIds.clear();
+    status('Añadí cinco minutos y moví las actividades siguientes.','good');
+    speak('Listo. Cinco minutos más.');
+    render();
+  }
+  $('doneBtn').addEventListener('click',markDone);
+  $('extendBtn').addEventListener('click',extendFive);
+  $('keepBtn').addEventListener('click',()=>{ $('earlyDialog').classList.add('hidden'); status('Horario conservado. ¡Puedes descansar hasta la clase!','good'); });
+  $('nextNowBtn').addEventListener('click',()=>{ $('earlyDialog').classList.add('hidden'); const next=nextItem(findCurrent()); if(next){ activeOverride=next.id; } save(); render(); status('Empezaste la siguiente actividad antes de la hora prevista.','good'); speak(`Lo siguiente es ${next?next.name:'tu tiempo libre'}.`); });
+  $('notifyBtn').addEventListener('click',async()=>{
+    if (!('Notification' in window)) { status('Este navegador no ofrece notificaciones del sistema.','attn'); return; }
+    const permission=await Notification.requestPermission();
+    status(permission==='granted'?'Notificaciones activadas.':'No se concedió permiso para notificaciones.',permission==='granted'?'good':'attn');
+  });
+  $('soundBtn').addEventListener('click',()=>{ playBeep(); speak('Prueba de sonido de Mi Rutina.'); status('Sonido de prueba reproducido.'); });
+  $('saveBtn').addEventListener('click',()=>{
+    const start=$('start').value||'13:30', cls=$('classStart').value||'18:00';
+    const s=minutes(start), c=minutes(cls);
+    if(c<=s+90 || c>=s+420) { status('La clase debe empezar al menos 1 h 30 min después del inicio y antes de terminar el horario.','attn'); return; }
+    plan[0].start=start; plan[0].end=plus(start,30);
+    plan[1].start=plus(start,30); plan[1].end=plus(start,60);
+    plan[2].start=plus(start,60); plan[2].end=plus(start,90);
+    plan[3].start=plus(start,90); plan[3].end=cls;
+    plan[4].start=cls; plan[4].end=plus(cls,60);
+    plan[5].start=plus(cls,60); plan[5].end=plus(cls,90);
+    shiftMinutes=0; activeOverride=null; completed.clear(); notifiedIds.clear(); save(); render();
+    status('Horario guardado.','good');
+  });
+  $('resetBtn').addEventListener('click',()=>{
+    if (!confirm('¿Reiniciar el horario y borrar las tareas marcadas como completadas?')) return;
+    plan=defaultPlan.map(x=>({...x})); completed.clear(); shiftMinutes=0; activeOverride=null; notifiedIds.clear();
+    $('start').value='13:30'; $('classStart').value='18:00'; save(); render(); status('Horario reiniciado.');
+  });
+
+  function handleVoice(text) {
+    const t=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if (t.includes('termin') || t.includes('ya hice') || t.includes('listo')) { markDone(); return; }
+    if (t.includes('cinco') || t.includes('5 minuto') || t.includes('mas tiempo') || t.includes('extiende')) { extendFive(); return; }
+    if (t.includes('que sigue') || t.includes('siguiente') || t.includes('horario')) {
+      const item=findCurrent(), next=item?nextItem(item):pendingNext();
+      const msg=next?`Lo siguiente es ${next.name}, de ${showTime(next.start)} a ${showTime(next.end)}.`:'No hay más actividades programadas.';
+      status(msg,'good'); speak(msg); return;
+    }
+    if (t.includes('repite') || t.includes('como voy')) { const item=findCurrent(); speak(item?`Estás en ${item.name}. Te quedan ${hhmmss(remainingFor(item))}.`:'No tienes una actividad en curso.'); return; }
+    status(`Te escuché: “${text}”. Prueba “tarea terminada”, “cinco minutos más” o “qué sigue”.`,'attn');
+    speak('No reconocí ese comando. Puedes decir tarea terminada, cinco minutos más, o qué sigue.');
+  }
+  $('voiceBtn').addEventListener('click',()=>{
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { status('El reconocimiento de voz no está disponible en este navegador. Prueba Chrome actualizado.','attn'); return; }
+    if (voiceOn && recognition) { recognition.stop(); return; }
+    recognition=new SpeechRecognition(); recognition.lang='es-CO'; recognition.interimResults=false; recognition.maxAlternatives=1; recognition.continuous=false;
+    recognition.onstart=()=>{ voiceOn=true; $('voiceLabel').textContent='Te escucho… habla ahora'; $('voiceBtn').textContent='⏹️'; };
+    recognition.onresult=e=>{ const heard=e.results[0][0].transcript; $('voiceLabel').textContent=`Te entendí: “${heard}”`; handleVoice(heard); };
+    recognition.onerror=e=>{ status(`No pude usar el micrófono (${e.error}). Revisa el permiso del sitio.`,'attn'); };
+    recognition.onend=()=>{ voiceOn=false; $('voiceLabel').textContent='Pulsa el micrófono para hablar'; $('voiceBtn').textContent='🎤'; };
+    try { recognition.start(); } catch { status('No pude iniciar el micrófono. Espera un momento e inténtalo otra vez.','attn'); }
+  });
+
+  // Notify once when an activity begins while the page is open.
+  let previousMinute = -1;
+  function checkBoundaries() {
+    const now=Math.floor(nowMinutes());
+    if (now!==previousMinute) {
+      previousMinute=now;
+      getPlan().forEach(item=>{
+        if (now===minutes(item.start) && !notifiedIds.has('start-'+item.id)) {
+          notifiedIds.add('start-'+item.id);
+          notify('Mi Rutina',`Ahora toca: ${item.name}.`);
+        }
+      });
+      tick();
+    }
+  }
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  }
+  const currentPlan=getPlan();
+  $('start').value=plan[0].start;
+  $('classStart').value=plan[4].start;
+  render();
+  setInterval(checkBoundaries,1000);
+  setInterval(render,1000);
+})();
+</script>
+</body>
+</html>
